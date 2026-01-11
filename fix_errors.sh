@@ -1,4 +1,3 @@
-cat > fix_errors.sh << 'EOF'
 #!/bin/bash
 cd ~/code/undo
 
@@ -103,7 +102,3 @@ echo "   • Safety popup at top-right after 2 seconds"
 echo "   • Gmail layout should NOT break"
 echo ""
 echo "🔄 If still issues, open: file://$(pwd)/test_extension.html"
-EOF
-
-chmod +x fix_errors.sh
-./fix_errors.sh

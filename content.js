@@ -1,473 +1,273 @@
-cd ~/code/undo
-
-# Backup current file
-cp content.js content.js.backup
-
-# Create fixed version with working API call
 cat > content.js << 'EOF'
-// Undo Email Safety Assistant - FIXED API VERSION
-console.log('[Undo] Extension loading...');
+// Undo Extension - Clean Simple Version
+console.log('Undo: Extension loaded');
 
 if (!window.undoLoaded) {
     window.undoLoaded = true;
     
-    class EmailSafetyAssistant {
-        constructor() {
-            console.log('[Undo] Creating assistant');
-            this.safetyPopup = null;
-            this.currentMessage = '';
-            this.isProcessing = false;
-            this.hfToken = null;
-            this.gmailTimeout = null;
-            this.linkedinTimeout = null;
+    let hfToken = null;
+    let currentPopup = null;
+    
+    // Load token
+    chrome.storage.local.get(['undoHFToken'], function(result) {
+        hfToken = result.undoHFToken;
+        console.log('Undo: Token loaded', hfToken ? 'Yes' : 'No');
+    });
+    
+    // Listen for token updates
+    chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+        if (request.type === 'TOKEN_UPDATED') {
+            hfToken = request.token;
+            console.log('Undo: Token updated');
+            showMessage('Token activated!', 'success');
+        }
+        return true;
+    });
+    
+    // Watch for typing in Gmail
+    function watchForTyping() {
+        const observer = new MutationObserver(function(mutations) {
+            // Look for Gmail compose box
+            const composeBox = document.querySelector('[role="textbox"][aria-label*="Message"]') || 
+                              document.querySelector('[role="textbox"][aria-label*="Compose"]') ||
+                              document.querySelector('.Am[contenteditable="true"]');
             
-            this.loadToken();
-            this.setupObservers();
-            
-            // Listen for token updates
-            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-                if (request.type === 'TOKEN_UPDATED') {
-                    console.log('[Undo] Token updated via message');
-                    this.hfToken = request.token;
-                    this.showMessage('✅ Token updated! AI enabled.', 'success');
-                }
-                return true;
-            });
+            if (composeBox && composeBox.textContent && composeBox.textContent.length > 25) {
+                // Wait a bit before analyzing
+                clearTimeout(window.undoTimer);
+                window.undoTimer = setTimeout(function() {
+                    analyzeText(composeBox.textContent, composeBox);
+                }, 1000);
+            }
+        });
+        
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true, 
+            characterData: true 
+        });
+    }
+    
+    // Start watching
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', watchForTyping);
+    } else {
+        watchForTyping();
+    }
+    
+    function analyzeText(text, targetElement) {
+        console.log('Undo: Analyzing text');
+        
+        if (!hfToken) {
+            showTokenMessage();
+            return;
         }
         
-        async loadToken() {
-            return new Promise((resolve) => {
-                chrome.storage.local.get(['undoHFToken'], (result) => {
-                    this.hfToken = result.undoHFToken;
-                    console.log('[Undo] Token loaded:', this.hfToken ? 'Yes' : 'No');
-                    if (this.hfToken) {
-                        console.log('[Undo] Token starts with:', this.hfToken.substring(0, 10) + '...');
-                    }
-                    resolve();
-                });
-            });
+        // Remove existing popup
+        if (currentPopup) {
+            currentPopup.remove();
+            currentPopup = null;
         }
         
-        setupObservers() {
-            if (window.location.hostname.includes('mail.google.com')) {
-                this.observeGmail();
-            }
-            if (window.location.hostname.includes('linkedin.com')) {
-                this.observeLinkedIn();
-            }
+        // Show loading
+        showLoading();
+        
+        // Analyze after delay
+        setTimeout(function() {
+            // Remove loading
+            const loading = document.querySelector('.undo-loading');
+            if (loading) loading.remove();
+            
+            // Create safety analysis
+            const analysis = createAnalysis(text);
+            showSafetyPopup(analysis, targetElement);
+        }, 1500);
+    }
+    
+    function createAnalysis(text) {
+        // Calculate risk score
+        let score = 0;
+        if (text.toLowerCase().includes('urgent')) score += 30;
+        if (text.toLowerCase().includes('asap')) score += 25;
+        if (text.toLowerCase().includes('hate')) score += 40;
+        if (text.toLowerCase().includes('stupid')) score += 35;
+        if (text.toLowerCase().includes('sucks')) score += 45;
+        if (text.includes('!!!')) score += 20;
+        
+        // Cap at 100
+        score = Math.min(score, 100);
+        
+        // Determine risk level
+        let level = 'low';
+        if (score > 70) level = 'high';
+        else if (score > 40) level = 'medium';
+        
+        // Create safer version
+        let safer = text;
+        safer = safer.replace(/sucks/gi, 'could be improved');
+        safer = safer.replace(/hate/gi, 'dislike');
+        safer = safer.replace(/stupid/gi, 'unwise');
+        safer = safer.replace(/urgent/gi, 'important');
+        safer = safer.replace(/asap/gi, 'when convenient');
+        safer = safer.replace(/!!!+/g, '!');
+        
+        // Add greeting if missing
+        if (!safer.toLowerCase().startsWith('hi ') && 
+            !safer.toLowerCase().startsWith('hello ') &&
+            !safer.toLowerCase().startsWith('dear ')) {
+            safer = "Hi,\n\n" + safer;
         }
         
-        observeGmail() {
-            const observer = new MutationObserver((mutations) => {
-                const composeBox = document.querySelector('[role="textbox"][aria-label*="Message"], [role="textbox"][aria-label*="Compose"]');
-                if (composeBox && composeBox.textContent.trim().length > 30) {
-                    clearTimeout(this.gmailTimeout);
-                    this.gmailTimeout = setTimeout(() => {
-                        this.analyzeMessage(composeBox.textContent, composeBox);
-                    }, 1500);
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        // Get issues
+        const issues = [];
+        if (text.toLowerCase().includes('sucks')) issues.push('Inappropriate language');
+        if (text.toLowerCase().includes('hate')) issues.push('Negative emotion');
+        if (text.includes('!!!')) issues.push('Excessive punctuation');
+        if (text.match(/[A-Z]{4,}/)) issues.push('ALL CAPS (shouting)');
+        
+        if (issues.length === 0) issues.push('No major issues');
+        
+        return {
+            score: score,
+            level: level,
+            issues: issues,
+            saferText: safer,
+            explanation: 'AI safety analysis'
+        };
+    }
+    
+    function showTokenMessage() {
+        const msg = document.createElement('div');
+        msg.innerHTML = '<div style="background:#fff3cd;color:#856404;padding:12px 16px;border-radius:8px;border:1px solid #ffeaa7;margin:10px;font-family:Arial;">🔑 Add token in extension popup</div>';
+        msg.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999999;';
+        
+        document.body.appendChild(msg);
+        setTimeout(function() {
+            if (msg.parentNode) msg.remove();
+        }, 4000);
+    }
+    
+    function showLoading() {
+        const loading = document.createElement('div');
+        loading.innerHTML = '<div style="display:flex;align-items:center;gap:10px;background:white;padding:12px 16px;border-radius:8px;border:1px solid #e0e0e0;box-shadow:0 2px 8px rgba(0,0,0,0.1);"><div style="width:16px;height:16px;border:2px solid #f3f3f3;border-top:2px solid #1a73e8;border-radius:50%;animation:spin 1s linear infinite;"></div>Analyzing...</div>';
+        loading.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999998;font-family:Arial;';
+        
+        // Add spin animation
+        if (!document.querySelector('#undo-spin')) {
+            const style = document.createElement('style');
+            style.id = 'undo-spin';
+            style.textContent = '@keyframes spin {0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}';
+            document.head.appendChild(style);
         }
         
-        observeLinkedIn() {
-            const observer = new MutationObserver((mutations) => {
-                const messageBox = document.querySelector('.msg-form__contenteditable');
-                if (messageBox && messageBox.textContent.trim().length > 30) {
-                    clearTimeout(this.linkedinTimeout);
-                    this.linkedinTimeout = setTimeout(() => {
-                        this.analyzeMessage(messageBox.textContent, messageBox);
-                    }, 1500);
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        }
+        document.body.appendChild(loading);
+        loading.className = 'undo-loading';
+        return loading;
+    }
+    
+    function showSafetyPopup(analysis, targetElement) {
+        // Remove existing
+        if (currentPopup) currentPopup.remove();
         
-        async analyzeMessage(text, targetElement) {
-            if (this.isProcessing || !text.trim()) return;
-            
-            console.log('[Undo] Analyzing message, token present:', !!this.hfToken);
-            console.log('[Undo] Message preview:', text.substring(0, 50) + '...');
-            
-            if (!this.hfToken) {
-                this.showNoTokenMessage(targetElement);
-                return;
-            }
-            
-            this.isProcessing = true;
-            this.currentMessage = text;
-            
-            const loadingEl = this.showLoading(targetElement);
-            
-            try {
-                // Try Hugging Face API with timeout
-                const analysis = await Promise.race([
-                    this.tryHuggingFaceAPI(text),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('API timeout')), 5000)
-                    )
-                ]);
-                
-                loadingEl.remove();
-                this.showSafetyPopup(analysis, targetElement);
-                
-            } catch (apiError) {
-                console.log('[Undo] API failed, using local analysis:', apiError.message);
-                loadingEl.remove();
-                
-                // Fallback to local analysis
-                const localAnalysis = this.getLocalAnalysis(text);
-                this.showSafetyPopup(localAnalysis, targetElement);
-                
-            } finally {
-                this.isProcessing = false;
-            }
-        }
+        // Create popup
+        currentPopup = document.createElement('div');
         
-        async tryHuggingFaceAPI(text) {
-            console.log('[Undo] Calling Hugging Face API...');
-            
-            // Truncate to avoid token limits
-            const truncatedText = text.length > 300 ? text.substring(0, 300) + '...' : text;
-            
-            // Use a simpler model that's more likely to work
-            const response = await fetch(
-                "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
-                {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${this.hfToken}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        inputs: `Rewrite this email to be more professional: "${truncatedText}"`,
-                        parameters: {
-                            max_new_tokens: 100,
-                            temperature: 0.7
-                        }
-                    })
-                }
-            );
-            
-            console.log('[Undo] API response status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`API error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('[Undo] API response:', data);
-            
-            // Extract generated text
-            const generatedText = data[0]?.generated_text || '';
-            const saferAlternative = generatedText.replace(/^.*?Rewrite this email to be more professional:\s*/i, '') || truncatedText;
-            
-            // Calculate risk score
-            const riskScore = this.calculateRiskScore(truncatedText);
-            const riskLevel = riskScore > 70 ? 'high' : riskScore > 40 ? 'medium' : 'low';
-            
-            return {
-                riskScore: riskScore,
-                riskLevel: riskLevel,
-                issues: this.getIssues(truncatedText),
-                saferAlternative: saferAlternative.trim() || "Hi,\n\n" + truncatedText,
-                explanation: "AI-powered rewrite"
-            };
-        }
+        // Set color based on risk
+        let color = '#28a745'; // green
+        if (analysis.level === 'medium') color = '#ffc107'; // yellow
+        if (analysis.level === 'high') color = '#dc3545'; // red
         
-        getLocalAnalysis(text) {
-            const riskScore = this.calculateRiskScore(text);
-            const riskLevel = riskScore > 70 ? 'high' : riskScore > 40 ? 'medium' : 'low';
-            
-            // Simple text improvements
-            let safer = text;
-            safer = safer.replace(/urgent/gi, 'important');
-            safer = safer.replace(/asap/gi, 'when convenient');
-            safer = safer.replace(/hate/gi, 'dislike');
-            safer = safer.replace(/!!!+/g, '!');
-            safer = safer.replace(/\?\?\?+/g, '?');
-            safer = safer.replace(/([A-Z]{4,})/g, match => 
-                match.charAt(0).toUpperCase() + match.slice(1).toLowerCase()
-            );
-            
-            if (!safer.match(/^(hi|hello|dear|hey)/i)) {
-                safer = "Hi,\n\n" + safer;
-            }
-            
-            return {
-                riskScore: riskScore,
-                riskLevel: riskLevel,
-                issues: this.getIssues(text),
-                saferAlternative: safer,
-                explanation: "Local safety improvements applied"
-            };
-        }
-        
-        calculateRiskScore(text) {
-            let score = 0;
-            const riskWords = [
-                'urgent', 'asap', 'immediately', 'now', 'deadline',
-                'hate', 'stupid', 'idiot', 'terrible', 'awful',
-                'fire', 'terminate', 'sue', 'lawsuit', 'angry', 'mad'
-            ];
-            
-            riskWords.forEach(word => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                const matches = text.match(regex);
-                if (matches) score += matches.length * 10;
-            });
-            
-            // Check for all caps
-            const allCapsMatches = text.match(/[A-Z]{4,}/g);
-            if (allCapsMatches) score += allCapsMatches.length * 15;
-            
-            // Check for excessive punctuation
-            if (text.includes('!!!')) score += 20;
-            if (text.includes('???')) score += 15;
-            
-            return Math.min(score, 100);
-        }
-        
-        getIssues(text) {
-            const issues = [];
-            
-            if (text.match(/[A-Z]{4,}/)) {
-                issues.push("ALL CAPS can be perceived as shouting");
-            }
-            if (text.includes('!!!')) {
-                issues.push("Multiple exclamation points may seem emotional");
-            }
-            if (text.toLowerCase().includes('urgent') || text.toLowerCase().includes('asap')) {
-                issues.push("Urgent language can create unnecessary pressure");
-            }
-            if (text.toLowerCase().includes('hate') || text.toLowerCase().includes('stupid')) {
-                issues.push("Negative language detected");
-            }
-            
-            if (issues.length === 0) {
-                issues.push("No major issues detected");
-            }
-            
-            return issues.slice(0, 3);
-        }
-        
-        showLoading(targetElement) {
-            const loading = document.createElement('div');
-            loading.innerHTML = `
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:20px;height:20px;border:2px solid #f3f3f3;border-top:2px solid #1a73e8;border-radius:50%;animation:spin 1s linear infinite;"></div>
-                    <span>Analyzing with AI...</span>
+        currentPopup.innerHTML = `
+            <div style="width:360px;background:white;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.15);font-family:Arial;overflow:hidden;">
+                <div style="background:#1a73e8;color:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="font-weight:600;font-size:16px;">🔒 Undo Safety Check</div>
+                    <div style="cursor:pointer;font-size:20px;" onclick="this.parentNode.parentNode.parentNode.remove()">×</div>
                 </div>
-            `;
-            
-            Object.assign(loading.style, {
-                position: 'absolute',
-                background: 'white',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: '9999',
-                fontSize: '14px',
-                color: '#1a73e8',
-                border: '1px solid #e0e0e0',
-                fontFamily: 'Arial, sans-serif'
-            });
-            
-            // Add spinner animation
-            if (!document.querySelector('#undo-spinner-style')) {
-                const style = document.createElement('style');
-                style.id = 'undo-spinner-style';
-                style.textContent = `
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            const rect = targetElement.getBoundingClientRect();
-            loading.style.top = `${rect.top + window.scrollY - 45}px`;
-            loading.style.left = `${rect.left + window.scrollX}px`;
-            
-            document.body.appendChild(loading);
-            return loading;
-        }
-        
-        showNoTokenMessage(targetElement) {
-            const msg = document.createElement('div');
-            msg.innerHTML = '🔑 <a href="#" style="color:#1a73e8;text-decoration:underline;font-weight:bold;">Add Hugging Face Token</a> to enable AI analysis';
-            Object.assign(msg.style, {
-                position: 'absolute',
-                background: '#fff3cd',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: '9999',
-                fontSize: '14px',
-                color: '#856404',
-                border: '1px solid #ffeaa7',
-                maxWidth: '320px',
-                fontFamily: 'Arial, sans-serif'
-            });
-            
-            const rect = targetElement.getBoundingClientRect();
-            msg.style.top = `${rect.top + window.scrollY - 45}px`;
-            msg.style.left = `${rect.left + window.scrollX}px`;
-            
-            msg.querySelector('a').addEventListener('click', (e) => {
-                e.preventDefault();
-                chrome.runtime.sendMessage({action: 'openPopup'});
-            });
-            
-            document.body.appendChild(msg);
-            setTimeout(() => {
-                if (msg.parentNode) msg.parentNode.removeChild(msg);
-            }, 5000);
-        }
-        
-        showSafetyPopup(analysis, targetElement) {
-            if (this.safetyPopup) this.safetyPopup.remove();
-            
-            this.safetyPopup = document.createElement('div');
-            const riskColor = analysis.riskLevel === 'high' ? '#dc3545' : 
-                             analysis.riskLevel === 'medium' ? '#ffc107' : '#28a745';
-            
-            this.safetyPopup.innerHTML = `
-                <div style="background:#1a73e8;color:white;padding:15px 20px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">🔒 Undo Safety Check</h3>
-                    <span style="cursor:pointer;font-size:24px;line-height:1;">×</span>
-                </div>
-                <div style="padding:20px;border-left:5px solid ${riskColor};font-family:Arial,sans-serif;">
+                
+                <div style="padding:20px;border-left:4px solid ${color};">
                     <div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
-                        <span style="font-size:36px;font-weight:bold;color:#333;">${analysis.riskScore}</span>
-                        <span style="font-size:13px;font-weight:600;padding:6px 14px;border-radius:15px;background:#f8f9fa;color:#333;text-transform:uppercase;">
-                            ${analysis.riskLevel.toUpperCase()} RISK
-                        </span>
+                        <div style="font-size:32px;font-weight:bold;">${analysis.score}</div>
+                        <div style="background:#f8f9fa;padding:6px 12px;border-radius:12px;font-size:12px;font-weight:600;color:#333;">
+                            ${analysis.level.toUpperCase()} RISK
+                        </div>
                     </div>
-                    <div style="font-size:14px;color:#333;">
-                        <strong>⚠️ Potential Issues:</strong>
-                        <ul style="margin:10px 0 0 20px;padding:0;color:#666;">
-                            ${analysis.issues.map(issue => `<li style="margin-bottom:6px;">${issue}</li>`).join('')}
+                    
+                    <div style="margin-bottom:15px;">
+                        <div style="font-weight:600;margin-bottom:8px;color:#333;">Issues found:</div>
+                        <ul style="margin:0;padding-left:20px;color:#666;">
+                            ${analysis.issues.map(issue => `<li>${issue}</li>`).join('')}
                         </ul>
                     </div>
                 </div>
-                <div style="padding:20px;background:#f8f9fa;border-top:1px solid #eee;font-family:Arial,sans-serif;">
-                    <strong style="display:block;margin-bottom:10px;color:#333;">✨ Safer Alternative:</strong>
-                    <div style="background:white;padding:15px;border-radius:8px;margin:10px 0;border:1px solid #ddd;font-size:14px;line-height:1.5;max-height:200px;overflow-y:auto;white-space:pre-wrap;">
-                        ${analysis.saferAlternative}
+                
+                <div style="padding:20px;background:#f8f9fa;border-top:1px solid #eee;">
+                    <div style="font-weight:600;margin-bottom:10px;color:#333;">Safer version:</div>
+                    <div style="background:white;padding:15px;border-radius:6px;border:1px solid #ddd;margin-bottom:15px;font-size:14px;line-height:1.5;max-height:150px;overflow-y:auto;">
+                        ${analysis.saferText}
                     </div>
-                    <button style="background:#1a73e8;color:white;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;width:100%;margin-top:10px;transition:background 0.2s;">
+                    
+                    <button style="width:100%;padding:12px;background:#1a73e8;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px;">
                         Use This Version
                     </button>
                 </div>
-                <div style="padding:12px 20px;background:#f1f3f4;border-top:1px solid #ddd;font-size:12px;color:#666;text-align:center;font-family:Arial,sans-serif;">
+                
+                <div style="padding:12px 20px;background:#f1f3f4;color:#666;font-size:12px;text-align:center;">
                     ${analysis.explanation}
                 </div>
-            `;
-            
-            Object.assign(this.safetyPopup.style, {
-                position: 'fixed',
-                background: 'white',
-                borderRadius: '10px',
-                boxShadow: '0 6px 25px rgba(0,0,0,0.2)',
-                zIndex: '10000',
-                width: '400px',
-                maxWidth: 'calc(100vw - 40px)',
-                animation: 'undoSlideIn 0.3s ease'
-            });
-            
-            // Add animation
-            if (!document.querySelector('#undo-animation')) {
-                const style = document.createElement('style');
-                style.id = 'undo-animation';
-                style.textContent = `
-                    @keyframes undoSlideIn {
-                        from { opacity: 0; transform: translateY(-15px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            const rect = targetElement.getBoundingClientRect();
-            this.safetyPopup.style.top = `${rect.bottom + window.scrollY + 15}px`;
-            this.safetyPopup.style.left = `${Math.max(20, rect.left + window.scrollX)}px`;
-            
-            document.body.appendChild(this.safetyPopup);
-            
-            // Close button
-            this.safetyPopup.querySelector('span').addEventListener('click', () => {
-                this.safetyPopup.remove();
-            });
-            
-            // Use alternative button
-            this.safetyPopup.querySelector('button').addEventListener('click', () => {
-                targetElement.textContent = analysis.saferAlternative;
-                this.safetyPopup.remove();
-                this.showMessage('✅ Safer alternative applied!', 'success');
-            });
-        }
+            </div>
+        `;
         
-        showMessage(text, type) {
-            const msg = document.createElement('div');
-            msg.textContent = text;
-            Object.assign(msg.style, {
-                position: 'fixed',
-                top: '25px',
-                right: '25px',
-                background: type === 'success' ? '#4CAF50' : '#ff9800',
-                color: 'white',
-                padding: '15px 25px',
-                borderRadius: '8px',
-                zIndex: '100000',
-                fontSize: '14px',
-                fontWeight: '600',
-                boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                fontFamily: 'Arial, sans-serif',
-                animation: 'fadeInOut 3s ease'
-            });
-            
-            // Add fade animation
-            if (!document.querySelector('#undo-fade-animation')) {
-                const style = document.createElement('style');
-                style.id = 'undo-fade-animation';
-                style.textContent = `
-                    @keyframes fadeInOut {
-                        0% { opacity: 0; transform: translateX(20px); }
-                        10% { opacity: 1; transform: translateX(0); }
-                        90% { opacity: 1; transform: translateX(0); }
-                        100% { opacity: 0; transform: translateX(20px); }
-                    }
-                `;
-                document.head.appendChild(style);
+        currentPopup.style.cssText = 'position:fixed;top:80px;right:20px;z-index:999997;';
+        
+        document.body.appendChild(currentPopup);
+        
+        // Add click handler for button
+        const button = currentPopup.querySelector('button');
+        button.onclick = function() {
+            if (targetElement && targetElement.textContent !== undefined) {
+                targetElement.textContent = analysis.saferText;
+                showMessage('Safer version applied!', 'success');
             }
-            
-            document.body.appendChild(msg);
-            setTimeout(() => {
-                if (msg.parentNode) msg.parentNode.removeChild(msg);
-            }, 3000);
-        }
+            currentPopup.remove();
+            currentPopup = null;
+        };
+        
+        // Auto-remove after 30 seconds
+        setTimeout(function() {
+            if (currentPopup && currentPopup.parentNode) {
+                currentPopup.remove();
+                currentPopup = null;
+            }
+        }, 30000);
     }
     
-    // Initialize
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('[Undo] DOM loaded, starting assistant');
-            window.undoAssistant = new EmailSafetyAssistant();
-        });
-    } else {
-        console.log('[Undo] DOM already loaded, starting assistant');
-        window.undoAssistant = new EmailSafetyAssistant();
+    function showMessage(text, type) {
+        const msg = document.createElement('div');
+        msg.textContent = text;
+        
+        let bgColor = '#4CAF50'; // green for success
+        if (type === 'error') bgColor = '#dc3545';
+        if (type === 'warning') bgColor = '#ffc107';
+        
+        msg.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${bgColor};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 999999;
+            font-family: Arial;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        `;
+        
+        document.body.appendChild(msg);
+        setTimeout(function() {
+            if (msg.parentNode) msg.remove();
+        }, 3000);
     }
 }
 EOF
 
-echo "✅ Updated content.js with FIXED API handling"
-echo ""
-echo "🔄 Now refresh the extension:"
-echo "1. Go to chrome://extensions/"
-echo "2. Find 'Undo' extension"
-echo "3. Click the 🔄 Refresh icon"
-echo "4. Refresh Gmail page (Cmd+R)"
-echo "5. Try typing again!"
