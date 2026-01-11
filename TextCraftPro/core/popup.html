@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>TextCraft Pro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>✏️ TextCraft Pro</h1>
+      <p class="subtitle">Enhanced Text Editor</p>
+    </header>
+    
+    <div class="feature-section">
+      <h2>Quick Actions</h2>
+      <div class="button-grid">
+        <button id="undoBtn" class="btn btn-primary">↶ Undo</button>
+        <button id="redoBtn" class="btn btn-primary">↷ Redo</button>
+        <button id="uppercaseBtn" class="btn">UPPERCASE</button>
+        <button id="lowercaseBtn" class="btn">lowercase</button>
+      </div>
+    </div>
+    
+    <div class="stats-section">
+      <h2>Text Stats</h2>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-label">Words:</span>
+          <span id="wordCount" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Chars:</span>
+          <span id="charCount" class="stat-value">0</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="history-section">
+      <h2>History</h2>
+      <div id="historyList" class="history-list">
+        <!-- History items will appear here -->
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
