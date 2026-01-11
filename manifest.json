@@ -12,6 +12,7 @@
     "https://mail.google.com/*",
     "https://www.linkedin.com/*",
     "https://*.openai.com/*",
+    "https://*.huggingface.co/*",
     "http://localhost:3000/*"
   ],
   "content_scripts": [
@@ -21,7 +22,8 @@
         "https://www.linkedin.com/*"
       ],
       "js": ["content.js"],
-      "css": ["content.css"]
+      "css": ["content.css"],
+      "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
