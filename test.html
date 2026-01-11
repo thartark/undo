@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TextCraft Pro Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-area { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        textarea, input { width: 100%; padding: 10px; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>✏️ TextCraft Pro Test Page</h1>
+    <p>Use this page to test your extension. Focus on any text field below and click the TextCraft Pro extension icon.</p>
+    
+    <div class="test-area">
+        <h2>Text Area Test</h2>
+        <textarea id="testTextarea" rows="10" placeholder="Type here to test undo/redo, transformations, and stats..."></textarea>
+    </div>
+    
+    <div class="test-area">
+        <h2>Input Field Test</h2>
+        <input type="text" id="testInput" placeholder="Type here to test on input fields...">
+        <input type="email" id="testEmail" placeholder="email@example.com">
+    </div>
+    
+    <div class="test-area">
+        <h2>ContentEditable Test</h2>
+        <div id="editableDiv" contenteditable="true" style="border:1px solid #ccc; padding:10px; min-height:100px;">
+            Click here and type to test on contenteditable elements...
+        </div>
+    </div>
+    
+    <div class="test-area">
+        <h2>Manual Testing</h2>
+        <button onclick="document.getElementById('testTextarea').value = document.getElementById('testTextarea').value.toUpperCase()">
+            UPPERCASE (Manual)
+        </button>
+        <button onclick="document.getElementById('testTextarea').value = document.getElementById('testTextarea').value.toLowerCase()">
+            lowercase (Manual)
+        </button>
+        <button onclick="alert('Words: ' + document.getElementById('testTextarea').value.trim().split(/\s+/).length)">
+            Count Words
+        </button>
+    </div>
+    
+    <script>
+        // Add some sample text for testing
+        document.getElementById('testTextarea').value = `This is sample text for testing TextCraft Pro.
+
+Try these features:
+1. Click the extension icon while focused here
+2. Use undo/redo (↶ ↷)
+3. Transform text to UPPERCASE/lowercase
+4. Check word/character counts
+
+The quick brown fox jumps over the lazy dog.`;
+
+        // Auto-save contenteditable changes
+        document.getElementById('editableDiv').addEventListener('input', function() {
+            console.log('ContentEditable changed:', this.textContent.substring(0, 50));
+        });
+    </script>
+</body>
+</html>

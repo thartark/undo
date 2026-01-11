@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>TextCraft Pro</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✏️ TextCraft Pro</h1>
+            <p class="subtitle">Smart Text Editor</p>
+        </header>
+        
+        <div class="section">
+            <h2>History</h2>
+            <div class="button-group">
+                <button id="undoBtn" class="btn primary">↶ Undo</button>
+                <button id="redoBtn" class="btn primary">↷ Redo</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Transform</h2>
+            <div class="button-group">
+                <button id="upperBtn" class="btn">UPPER</button>
+                <button id="lowerBtn" class="btn">lower</button>
+                <button id="titleBtn" class="btn">Title</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Stats</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span class="label">Words:</span>
+                    <span id="wordCount" class="value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Chars:</span>
+                    <span id="charCount" class="value">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <button id="settingsBtn" class="btn secondary">⚙️ Settings</button>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
