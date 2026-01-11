@@ -1,22 +1,29 @@
 # Undo - Safer Email Assistant
 
-A Chrome extension that checks emails in Gmail/LinkedIn for safety and suggests improvements.
+Chrome extension for AI-powered email safety checking in Gmail and LinkedIn.
 
-## Quick Start
+## Installation
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select this folder
 
-### 1. Install the Chrome Extension
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable **"Developer mode"** (top-right toggle).
-3. Click **"Load unpacked"**.
-4. Select the **root folder of this project** (where `manifest.json` is).
+## Setup
+1. Get free token from https://huggingface.co/settings/tokens
+2. Click Undo extension icon
+3. Paste token (starts with `hf_`)
+4. Click "Save Token"
 
-### 2. Configure
-1. Click the Undo extension icon (blue "U") in Chrome's toolbar.
-2. Get a free token from [Hugging Face](https://huggingface.co/settings/tokens).
-3. Paste the token (starts with `hf_`) and click **Save**.
+## Usage
+- Open Gmail or LinkedIn
+- Start typing a message
+- After 30+ characters, safety analysis appears
+- Click "Use This Version" to apply safer alternative
 
-### 3. Start the Local Server (Optional)
-```bash
-cd server
-npm install
-npm start
+## Files
+- `manifest.json` - Extension configuration
+- `content.js` - Main logic for Gmail/LinkedIn
+- `popup.html/js` - Settings popup
+- `content.css` - Styling
+- `background.js` - Background service worker
+- `icons/` - Extension icons

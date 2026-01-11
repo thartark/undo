@@ -1,37 +1,24 @@
+cat > manifest.json << 'EOF'
 {
   "manifest_version": 3,
   "name": "Undo - Safer Email Assistant",
   "version": "1.0.0",
   "description": "AI-powered email safety checker for Gmail and LinkedIn",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting"
-  ],
+  "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://mail.google.com/*",
     "https://www.linkedin.com/*",
-    "https://*.openai.com/*",
-    "https://*.huggingface.co/*",
-    "http://localhost:3000/*"
+    "https://api-inference.huggingface.co/*"
   ],
-  "content_scripts": [
-    {
-      "matches": [
-        "https://mail.google.com/*",
-        "https://www.linkedin.com/*"
-      ],
-      "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_end"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.html", "content.css"],
-      "matches": ["<all_urls>"]
-    }
-  ],
+  "content_scripts": [{
+    "matches": [
+      "https://mail.google.com/*",
+      "https://www.linkedin.com/*"
+    ],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_end"
+  }],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Undo Email Safety"
@@ -40,8 +27,8 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "background": {
-    "service_worker": "background.js"
   }
 }
+EOF
+
+echo "✅ Updated manifest.json with correct Hugging Face URL"
